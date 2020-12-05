@@ -13,32 +13,50 @@ int main() {
     ofstream fout("ariprog.out");
 
     int seqLen, bsq;
-    cin >> seqLen >> bsq;
+    fin >> seqLen >> bsq;
 
-    cout << "HI\n";
-    unordered_set<int> s;
+    set<int> s;
+    auto arr = array<bool, 125001>{};
     for (int p = 0; p <= bsq; ++p) {
         for (int q = 0; q <= bsq; ++q) {
-            cout << p << ',' << q << '\t';
-            s.insert(p*p + q*q);
+            arr[p * p + q * q] = true;
         }
     }
+    int maxVal = bsq * bsq * 2;
+    int maxDiff = maxVal / (seqLen - 1);
 
-    int maxVal = bsq*bsq + bsq*bsq;
-    vector<vector<int>> dp(seqLen+1, vector<int>(maxVal, 0));
-    for (int len = 1; len <= seqLen; ++len) {
-        cout << len << '\n';
-        for (int i = 0; i <= maxVal; ++i) {
-            if (s.count(i)) {
-                if (i < len) {
-                    dp[len][i] = 1;
-                } else {
-                    dp[len][i] = 1 + dp[len][i-len];
-                }
-                if (dp[len][i] == seqLen) {
-                    fout << i - (seqLen - 1) * len << ' ' << len << '\n';
-                }
+    vector<pair<int, int>> res;
+    for (int val = 0; val <= maxVal; ++val) {
+        if (!arr[val]) {
+            continue;
+        }
+        for (int len = 1; len <= maxDiff; ++len) {
+            if (len * (seqLen - 1) > val) {
+                break;
             }
+            auto temp = val;
+            int count = 1;
+            while (temp >= 0 && arr[temp]) {
+                if (count >= seqLen) {
+                    res.emplace_back(make_pair(temp, len));
+                }
+                temp -= len;
+                ++count;
+            }
+        }
+    }
+    if (res.size() == 0) {
+        fout << "NONE\n";
+    } else {
+        sort(begin(res), end(res), [](const auto& p1, const auto& p2) {
+            if (p1.second != p2.second) {
+                return p1.second < p2.second;
+            }
+            return p1.first < p2.first;
+        });
+        res.erase(unique(begin(res), end(res)), end(res));
+        for (auto&& p : res) {
+            fout << p.first << ' ' << p.second << '\n';
         }
     }
 
