@@ -6,6 +6,23 @@ TASK: stamps
 #include <bits/stdc++.h>
 using namespace std;
 
+constexpr static int INF = 1'000'000'000;
+
+int minStamps(int val, const int maxStamps, const vector<int>& values, vector<int>& dp) {
+    if (val < 0) {
+        return INF;
+    }
+    if (dp[val] != -1) {
+        return dp[val];
+    }
+    int stamps = INF;
+    for (int i = 0; i < values.size(); ++i) {
+        stamps = min(stamps, 1 + minStamps(val - values[i], maxStamps, values, dp));
+    }
+    dp[val] = stamps;
+    return dp[val];
+}
+
 
 int main() {
     // i/o
@@ -15,37 +32,25 @@ int main() {
     int maxStamps, numValues;
     fin >> maxStamps >> numValues;
 
-    vector<vector<int64_t>> dp(numValues + 1, vector<int64_t>(maxStamps, 0));
-    vector<int64_t> values(numValues + 1);
+    vector<int> values(numValues);
 
-    values[0] = 0;
-    for (int i = 1; i < values.size(); ++i) {
+    for (int i = 0; i < values.size(); ++i) {
         fin >> values[i];
     }
-    dp[0][0] = 1;
-    for (int i = 1; i < dp.size(); ++i) {
-        // cout << i << '\n';
-        // cout << "Value: " << values[i] << '\n';
-        for (int j = values[i]; j < maxStamps; ++j) {
-            cout << "Checking " << i - 1 << '\t' << j - values[i] << " is " << dp[i - 1][j - values[i]] << '\n';
-            if (dp[i - 1][j - values[i]] > 0) {
-                dp[i][j] += dp[i - 1][j - values[i]];
-            }
-            cout << i << ',' << j << " is " << dp[i][j] << '\n';
-        }
-    }
+
+    int maxVal = *max_element(begin(values), end(values));
+    // represents the minimum number of stamps that can be used to create this value
+    vector<int> dp(maxVal * maxStamps + 1, -1);
+
+    dp[0] = 0;
     int maxValue = 0;
-    for (int j = 0; j < dp[0].size(); ++j) {
-        bool valid = false;
-        for (int i = 0; i < dp.size(); ++i) {
-            if (dp[i][j] > 0) {
-                valid = true;
-            }
-        }
-        if (!valid) {
+    for (int i = 1; i < dp.size(); ++i) {
+        if (minStamps(i, maxStamps, values, dp) > maxStamps) {
+            maxValue = i - 1;
             break;
-        } else {
-            maxValue = j;
+        }
+        if (i == dp.size() - 1) {
+            maxValue = i;
         }
     }
 
