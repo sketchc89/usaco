@@ -17,24 +17,7 @@ int main() {
         fout << 0 << '\n';
         return EXIT_SUCCESS;
     }
-    //_
-    //| \_
-    //|   \// little prince snake eating elephant
-    //|   /
-    //|  /
-    //| /
-    //|/
-    //         _//
-    //       _/ /
-    //     _/  /
-    //   _/   /
-    // _/    /
-    ///     /
-    //|    /
-    //|   /
-    //|  /
-    //| /
-    //|/
+
     // flip axis so that AC is the y axis; (m,n); (0, p)
     double slopeAB = static_cast<double>(n) / m;
     double slopeCB = static_cast<double>(n - p) / m;
@@ -56,6 +39,7 @@ int main() {
             yAB = ceil(yAB);
         }
 
+        /* length - 1 lattice points between lattice points bounding this row */
         res += max(0, static_cast<int>(yCB - yAB - 1));
     }
 
