@@ -18,57 +18,37 @@ int main() {
         fin >> songs[i];
     }
 
-    int res = 0;
-    for (int disk = 0; disk < numDisks; ++disk) {
-        cout << "\nWorking on disk " << disk << '\n';
-        vector<vector<int>> dp(timePerDisk + 1);
-        dp[0].push_back(-1);  // sentinel value
-        for (int i = 0; i < songs.size(); ++i) {
-            cout << "\nSong# " << i << " with duration " << songs[i] << '\t';
-            if (songs[i] == -1) {
-                continue;
-            }
-            for (int t = timePerDisk; t >= songs[i]; --t) {
-                if (dp[t - songs[i]].size() > 0) {
-                    cout << "\tCan put at time " << t << '\t';
-                    if (dp[t].size() < dp[t - songs[i]].size() + 1) {
-                        dp[t].clear();
-                        for (auto idx : dp[t - songs[i]]) {
-                            if (idx != -1) {
-                                dp[t].push_back(idx);
-                            }
-                        }
-                        dp[t].push_back(i);
-                    } else {
-                        cout << " wouldnt improve disk\t";
+    vector<vector<int>> dp(numDisks, vector<int>(timePerDisk + 1, 0));
+    for (int song = 0; song < songs.size(); ++song) {
+        // cout << "\nSong# " << song << " with duration " << songs[song] << '\n' << string(30, '-');
+        const auto duration = songs[song];
+        for (int disk = numDisks - 1; disk >= 0; --disk) {
+            // cout << "\nWorking on disk " << disk << '\n';
+            for (int timeLeft = 0; timeLeft <= timePerDisk; ++timeLeft) {
+                // cout << "Time left on disk is " << timeLeft << '\t';
+                if (timeLeft < duration) {
+                    if (duration <= timePerDisk && disk < numDisks - 1) {
+                        // cout << "Added onto next disk already processed\t";
+                        dp[disk + 1][timePerDisk - duration] = max(dp[disk + 1][timePerDisk - duration], dp[disk][timeLeft] + 1);
+                        // cout << "Now max songs that can fit on disk " << disk + 1 << " with " << timePerDisk - duration << " time left is
+                        // "
+                        //      << dp[disk + 1][timePerDisk - duration] << '\t';
                     }
-                    cout << "Size at time " << t << " is " << dp[t].size();
+                } else {
+                    dp[disk][timeLeft - duration] = max(dp[disk][timeLeft - duration], dp[disk][timeLeft] + 1);
+                    // cout << "Tried adding to current disk\t";
+                    // cout << "Now max songs that can fit on disk " << disk << " with " << timeLeft - duration << " time left is "
+                    //      << dp[disk][timeLeft - duration] << '\t';
                 }
+                // cout << '\n';
             }
         }
-        int songsOnDisk = 0;
-        int timeToDelete = 0;
-        cout << "\nFinding new most songs\n";
-        for (int t = 1; t <= timePerDisk; ++t) {
-            if (dp[t].size() >= songsOnDisk) {
-                songsOnDisk = dp[t].size();
-                timeToDelete = t;
-                cout << "New most songs " << songsOnDisk << " with time " << timeToDelete << '\n';
-            }
+    }
+    int res = 0;
+    for (int i = 0; i < dp.size(); ++i) {
+        for (int j = 0; j < dp[i].size(); ++j) {
+            res = max(res, dp[i][j]);
         }
-        if (songsOnDisk == 0) {
-            cout << "No songs on disk!\n";
-            break;
-        }
-        res += songsOnDisk;
-        cout << "There are " << songsOnDisk << " songs on Disk# " << disk << '\n';
-        cout << "There are " << res << " total songs on all disks\n";
-        cout << "Deleting songs in time " << timeToDelete << " for disk: " << disk << " used songs: ";
-        for (int song = 0; song < dp[timeToDelete].size(); ++song) {
-            cout << dp[timeToDelete][song] << '\t';
-            songs[dp[timeToDelete][song]] = -1;
-        }
-        cout << '\n';
     }
     ofstream fout("rockers.out");
     fout << res << '\n';
