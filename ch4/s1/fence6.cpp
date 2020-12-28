@@ -88,6 +88,7 @@ void nameEnd(Segment& seg, vector<Segment>& segs, int& currName) {
         }
     }
 }
+
 int main() {
     // i/o
     ifstream fin("fence6.in");
@@ -99,6 +100,8 @@ int main() {
     unordered_map<int, unordered_map<int, int>> graph;
     unordered_map<int, int> lengths;
 
+    /* Read all of the input into a custom struct so we can pick it apart
+     * Really terrible input format that is more difficult to handle than the problem itself */
     vector<Segment> segments(numSegments);
     for (int i = 0; i < numSegments; ++i) {
         int id, weight, numConnA, numConnB;
@@ -122,54 +125,27 @@ int main() {
         sort(begin(segments[id].connB), end(segments[id].connB));
     }
 
+    /* Name the nodes at the end of each segment
+     * Give a new name if the node hasn't been seen
+     * Use the old name if the node has already been seen before */
     int currName = 0;
     for (int i = 0; i < segments.size(); ++i) {
         nameEnd(segments[i], segments, currName);
     }
     int N = currName;
+
+    /* create an adjacency matrix from segment-node struct */
     vector<vector<int>> mat(N, vector<int>(N, INF));
     for (int i = 0; i < segments.size(); ++i) {
-        // cout << "\n"
-        //      << string(30, '-') << '\n'
-        //      << "ID: " << segments[i].id << "\tWeight: " << segments[i].weight << "\n"
-        //      << string(30, '-') << '\n';
-        // cout << "A Side: " << segments[i].aId << '\t';
-        // for (int j = 0; j < segments[i].connA.size(); ++j) {
-        //     cout << segments[i].connA[j] << '\t';
-        // }
-        // cout << '\n';
-        // cout << "B Side: " << segments[i].bId << '\t';
-        // for (int j = 0; j < segments[i].connB.size(); ++j) {
-        //     cout << segments[i].connB[j] << '\t';
-        // }
-        // cout << '\n';
-        //
         mat[segments[i].aId][segments[i].bId] = segments[i].weight;
         mat[segments[i].bId][segments[i].aId] = segments[i].weight;
     }
-    // cout << "\n\nBEFORE\n";
-    // for (int row = 0; row < N; ++row) {
-    //     for (int col = 0; col < N; ++col) {
-    //         int val = mat[row][col] == INF ? -1 : mat[row][col];
-    //         cout << setw(6) << val;
-    //     }
-    //     cout << '\n';
-    // }
 
-    // cout << "\n\nAFTER\n";
-    // for (int row = 0; row < N; ++row) {
-    //     for (int col = 0; col < N; ++col) {
-    //         int val = mat[row][col] == INF ? -1 : mat[row][col];
-    //         cout << setw(6) << val;
-    //     }
-    //     cout << '\n';
-    // }
-
-    int minCycle = INF;
     /* Remove segment from graph,
      * Calculate the shortest path from one end of segment to other end of segment
      * Add the segment length
      * The minimum cycle is the smallest after doing this for every segment */
+    int minCycle = INF;
     for (int seg = 0; seg < segments.size(); ++seg) {
         // cout << "removing segment " << seg << '\n';
         int cycleLength = segments[seg].weight;
@@ -180,13 +156,12 @@ int main() {
         int temp = INF;
         int aId = segments[seg].aId;
         int bId = segments[seg].bId;
-        swap(temp, mat[aId][bId]);
+        swap(temp, mat[aId][bId]);  // store old value
         cycleLength += dijksta(aId, bId, mat);
         minCycle = min(minCycle, cycleLength);
-        swap(temp, mat[aId][bId]);
+        swap(temp, mat[aId][bId]);  // replace old value
     }
 
-    // cout << "THE RESULT IS " << minCycle << '\n';
     fout << minCycle << '\n';
 
 
