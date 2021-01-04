@@ -3,119 +3,159 @@ ID: sketchc1
 LANG: C++14
 TASK: ditch
 */
+
 #include <bits/stdc++.h>
 using namespace std;
 
-constexpr static int INF = 1'000'000'000;
+constexpr static int INF = 2'000'000'000;
 
-ofstream fout("ditch.out");
+struct Edge {
+    int to, from, flow, capacity;
+    bool isResidual;
+    int remainingCapacity() const {
+        return capacity - flow;
+    }
+};
 
-int maxFlow(int src, int dst, unordered_map<int, unordered_map<int, pair<int, int>>>& graph, vector<int>& path, const int numNodes) {
-    vector<int> width(numNodes, 0);
-    vector<int> visited(numNodes, 0), parent(numNodes, -1);
-    width[0] = INF;
+int bottleneckDijkstra(int src, int dst, unordered_map<int, unordered_map<int, Edge>>& graph, const int N) {
+    vector<int> maxFlow(N, 0), visited(N, 0), parent(N, -1);
+    maxFlow[src] = INF;
     priority_queue<pair<int, int>> pq;
+    pq.emplace(make_pair(INF, src));
 
-    fout << '\n' << string(30, '-') << "\nFinding max flow path\n" << string(30, '-') << '\n';
-    pq.emplace(make_pair(width[0], src));
     while (!pq.empty()) {
+        auto nodeFlow = pq.top().first;
         auto node = pq.top().second;
-        fout << "Node: " << node << "\t";
         pq.pop();
         if (visited[node]) {
-            fout << '\n';
             continue;
         } else {
             visited[node] = true;
         }
         for (auto&& kv : graph[node]) {
-            int maxW = min(width[node], kv.second.first);
-            fout << "max width from " << node << " to " << kv.first << " is max of " << width[node] << " and " << kv.second.first << '\n';
-            if (maxW > width[kv.first]) {
-                parent[kv.first] = node;
-                width[kv.first] = maxW;
-                pq.emplace(make_pair(maxW, kv.first));
+            auto to = kv.first;
+            auto&& edge = kv.second;
+            auto maxFlowEdge = min(maxFlow[node], edge.remainingCapacity());
+            if (maxFlowEdge > maxFlow[to]) {
+                parent[to] = node;
+                maxFlow[to] = maxFlowEdge;
+                pq.emplace(make_pair(maxFlowEdge, to));
             }
         }
     }
 
-    int x = dst;
-    path.push_back(x);
-    while (parent[x] != -1) {
-        fout << "Parent of " << x << " is " << parent[x] << '\t';
-        path.push_back(parent[x]);
-        x = parent[x];
+    int flow = maxFlow[dst];
+    if (flow == 0) {  // no need to reduce flow
+        return flow;
     }
-    reverse(begin(path), end(path));
-    // for (auto num : path) {
-    //     fout << num << ',';
-    // }
-    // fout << '\n';
-    return width[dst];
+    while (parent[dst] != -1) {
+        graph[parent[dst]][dst].flow += flow;  // reduce forward edge
+        graph[dst][parent[dst]].flow -= flow;  // increase back edge
+        assert(graph[dst][parent[dst]].remainingCapacity() >= 0);
+        assert(graph[parent[dst]][dst].remainingCapacity() >= 0);
+        dst = parent[dst];  // move back in the path
+    }
+    return flow;
+}
+
+int edmondsKarp(int src, int dst, unordered_map<int, unordered_map<int, Edge>>& graph, const int N) {
+    queue<pair<pair<int, int>, vector<pair<int, int>>>> q;
+    vector<int> visited(N, 0);
+    vector<pair<int, int>> path;
+    q.emplace(make_pair(make_pair(src, INF), path));
+    int node = -1, flow = 0;
+    bool reachedTarget = false;
+
+    while (!q.empty()) {
+        node = q.front().first.first;
+        flow = q.front().first.second;
+        path = q.front().second;
+        q.pop();
+        if (visited[node]) {
+            continue;
+        } else {
+            visited[node] = true;
+        }
+        if (node == dst) {
+            reachedTarget = true;
+            break;
+        }
+        for (auto&& kv : graph[node]) {
+            auto edgeId = kv.first;
+            auto&& edge = kv.second;
+            auto to = kv.second.to;
+            auto maxFlowEdge = min(flow, edge.remainingCapacity());
+            if (maxFlowEdge > 0) {
+                path.emplace_back(make_pair(node, edgeId));
+                q.emplace(make_pair(make_pair(to, maxFlowEdge), path));
+                path.pop_back();
+            }
+        }
+    }
+    if (!reachedTarget) {
+        return 0;
+    }
+    for (int i = 0; i < path.size(); ++i) {
+        auto from = path[i].first;
+        auto edgeId = path[i].second;
+        auto& edge = graph[path[i].first][path[i].second];
+        auto to = edge.to;
+        auto& resEdge = graph[to][path[i].second];
+        edge.flow += flow;
+        resEdge.flow -= flow;
+
+        assert(edge.remainingCapacity() >= 0);
+        assert(resEdge.remainingCapacity() >= 0);
+    }
+    return flow;
 }
 
 int main() {
-    // i/o
     ifstream fin("ditch.in");
 
-    // read input into graph
     int numEdges, numNodes;
     fin >> numEdges >> numNodes;
-    // maybe sorting edges by weight would be a bit faster
-    unordered_map<int, unordered_map<int, pair<int, int>>> graph;
-    int src, dst, weight;
+    unordered_map<int, unordered_map<int, Edge>> edges;
     for (int i = 0; i < numEdges; ++i) {
+        int src, dst, weight;
         fin >> src >> dst >> weight;
         --src;
         --dst;
-        if (src != dst) {
-            graph[src][dst].first = weight;
-            graph[src][dst].second = weight;
-            graph[dst][src].first = 0;
-            graph[dst][src].second = weight;
+        Edge forward, residual;
+        forward.flow = 0;
+        forward.from = src;
+        forward.to = dst;
+        forward.capacity = weight;
+        forward.isResidual = false;
+        residual.flow = 0;
+        residual.from = dst;
+        residual.to = src;
+        residual.capacity = 0;
+        residual.isResidual = true;
+        edges[src][i] = forward;
+        edges[dst][i] = residual;
+    }
+    int maxFlow = 0;
+    int flow = 1;
+    int count = 0;
+    string line = "\n" + string(50, '-') + "\n";
+    while (flow > 0) {
+        int src = 0;
+        int dst = numNodes - 1;
+        // find augmenting path
+        flow = edmondsKarp(src, dst, edges, numNodes);
+        maxFlow += flow;
+        ++count;
+    }
+    for (int i = 0; i < 2; ++i) {
+        for (int j = 0; j < numNodes; ++j) {
+            string s = to_string(j) + string(1, ':') + to_string(edges[i][j].remainingCapacity());
+            if (j % 10 == 9) {
+                cout << '\n';
+            }
         }
     }
-    // for (auto&& kv : graph) {
-    //     fout << kv.first << ':';
-    //     for (auto&& toWeight : kv.second) {
-    //         fout << toWeight.first << ',' << toWeight.second << '\t';
-    //     }
-    //     fout << '\n';
-    // }
-
-    // keep adding flow until there is no change from one step to the next
-    bool progress = true;
-    int totalFlow = 0;
-    vector<int> path;
-    while (true) {
-        src = 0;
-        dst = numNodes - 1;
-        int node = src;
-
-        path.clear();
-        int flow = maxFlow(src, dst, graph, path, numNodes);
-        if (flow == 0) {
-            break;
-        }
-
-        totalFlow += flow;
-        fout << "Progress, increasing by " << flow << " to " << totalFlow << '\n';
-        // reduce capacity of every edge in the path found
-        for (int i = 0; i < path.size() - 1; ++i) {
-            auto a = path[i];
-            auto b = path[i + 1];
-            fout << "Decreasing " << a << "-->" << b << '\t';
-            if (graph[a][b].first - flow < -graph[a][b].second) {
-                flow = graph[a][b].second - graph[a][b].first;
-            }
-            if (graph[b][a].first + flow > graph[b][a].second) {
-                flow = graph[b][a].first - graph[b][a].second;
-            }
-            graph[a][b].first = graph[a][b].first - flow;  // reduce flow from path
-            graph[b][a].first = graph[b][a].first + flow;  // add residual flow in opposite direction of path
-        }
-    }
-
-    fout << totalFlow << '\n';
+    ofstream fout("ditch.out");
+    fout << maxFlow << '\n';
     return EXIT_SUCCESS;
 }
