@@ -17,47 +17,6 @@ struct Edge {
     }
 };
 
-int bottleneckDijkstra(int src, int dst, unordered_map<int, unordered_map<int, Edge>>& graph, const int N) {
-    vector<int> maxFlow(N, 0), visited(N, 0), parent(N, -1);
-    maxFlow[src] = INF;
-    priority_queue<pair<int, int>> pq;
-    pq.emplace(make_pair(INF, src));
-
-    while (!pq.empty()) {
-        auto nodeFlow = pq.top().first;
-        auto node = pq.top().second;
-        pq.pop();
-        if (visited[node]) {
-            continue;
-        } else {
-            visited[node] = true;
-        }
-        for (auto&& kv : graph[node]) {
-            auto to = kv.first;
-            auto&& edge = kv.second;
-            auto maxFlowEdge = min(maxFlow[node], edge.remainingCapacity());
-            if (maxFlowEdge > maxFlow[to]) {
-                parent[to] = node;
-                maxFlow[to] = maxFlowEdge;
-                pq.emplace(make_pair(maxFlowEdge, to));
-            }
-        }
-    }
-
-    int flow = maxFlow[dst];
-    if (flow == 0) {  // no need to reduce flow
-        return flow;
-    }
-    while (parent[dst] != -1) {
-        graph[parent[dst]][dst].flow += flow;  // reduce forward edge
-        graph[dst][parent[dst]].flow -= flow;  // increase back edge
-        assert(graph[dst][parent[dst]].remainingCapacity() >= 0);
-        assert(graph[parent[dst]][dst].remainingCapacity() >= 0);
-        dst = parent[dst];  // move back in the path
-    }
-    return flow;
-}
-
 int edmondsKarp(int src, int dst, unordered_map<int, unordered_map<int, Edge>>& graph, const int N) {
     queue<pair<pair<int, int>, vector<pair<int, int>>>> q;
     vector<int> visited(N, 0);
